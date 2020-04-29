@@ -1,0 +1,12 @@
+Scode[股票代码]-上市公司股票代码    stock ID
+Anndats[报告日期]-分析师报告日期   dates that analyst report
+A_name[分析师姓名]-分析师姓名      analyst's name
+A_code[分析师代码]-CNRDS编制的分析师个人独特ID，多个分析师以“/”号分隔   analyst's ID
+B_name[券商名称]-分析师工作的证券公司全称    the firm that analyst work for
+B_code[券商代码]-CNRDS编制的证券公司独特ID  the firm ID that analyst work for
+Recomm_text[原始报告中的荐股评级]-机构或分析师发布的上市公司研究报告中的推荐评级表述 recommended stock rating in the original report
+Recomm_std[标准化荐股意见]-根据CNRDS标准，将原始研究报告中的推荐评级表述标准化后的推荐评级表述，值为“买入”，“增持”，“中性”，“减持”和“卖出” standardised recommendation: the standardised recommendation rating statements in the original report were 'buy', 'overweight', 'neutral','underweight', and 'sell'.
+Recomm_code[标准化荐股意见代码]-标准化荐股意见代码，“买入”为1，“增持”为2，“中性”为3，“减持”为4，“卖出”为5
+standardised recommendation code: buy=1, overweight=2, neutral=3, underweight=4, sell=5
+Star[是否是明星分析师]-若分析师是该年度新财富评定的最佳分析师，则该分析师为明星分析师，取值为1，否则为0
+star analyst: if the analyst is star analyst, the variable is equal to one. Otherwise, it is equal to 0.

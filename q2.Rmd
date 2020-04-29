@@ -1,0 +1,218 @@
+---
+title: "p2"
+author: "Di Zhang  118020518"
+date: "4/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+com1=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s1/TRD_Dalyr.csv')
+com2=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s1/TRD_Dalyr1.csv')
+com=rbind(com1,com2)
+com1=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s2/TRD_Dalyr.csv')
+com2=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s2/TRD_Dalyr1.csv')
+com3=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s2/TRD_Dalyr2.csv')
+com=rbind(com,com1,com2,com3)
+com1=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s3/TRD_Dalyr.csv')
+com2=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s3/TRD_Dalyr1.csv')
+com3=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/s3/TRD_Dalyr2.csv')
+com=rbind(com,com1,com2,com3)
+head(com)
+```
+
+```{r}
+names(com)=c('permno','date','return')
+com$date=as.Date(com$date)
+head(com)
+```
+
+```{r}
+star=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/star.csv')
+head(star)
+```
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+names(star)=c('permno','date','recom','star')
+star=star %>% mutate(permno=as.numeric(permno),date=as.Date(date))
+head(star)
+```
+
+```{r}
+df=com %>% left_join(star,by=c('permno','date'))
+head(df)
+```
+
+```{r}
+df=df %>% mutate(recom=ifelse(is.na(star),NA,recom),star=ifelse(is.na(recom),NA,star))
+```
+
+```{r}
+df=df %>% mutate(ym=zoo::as.yearmon(date))
+```
+
+```{r}
+df_sum=df %>% group_by(permno,ym) %>% summarise(recom=sum(recom,na.rm=TRUE),star=sum(star,na.rm=TRUE))
+head(df_sum)
+```
+
+```{r}
+df_sum=df_sum %>% mutate(sign=ifelse(recom>=0,5,(-5)))
+df_sum$recom=df_sum$recom+df_sum$sign*df_sum$star
+```
+
+```{r}
+df_sum=df_sum %>% select(permno,ym,recom)
+```
+
+```{r}
+write.csv(df_sum,'/Users/zhangdi/FIN3080/project3/p3/rating/df_sum.csv')
+```
+
+```{r}
+#one=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/time_two.csv')
+
+#one=one %>% mutate(ym=zoo::as.yearmon(ym)) %>%
+#  left_join(df,by=c('permno','ym')) %>% select(permno,ym,return,date)
+
+#one=one %>% group_by(date) %>% summarise(return=mean(return))
+#one=one %>% mutate(cumret=cumprod(return+1))
+#plot(one$cumret~one$date,type='l',xlab='Date',ylab='Cumulative return',col='blue',
+#     main='Buy the 20 most recommended stocks last two months')
+#lines(mar$cumret~mar$date,lty=1,col='red')
+#legend("bottomleft",c("Portfolio","Market"),lty=c(1,1),col=c('blue','red'))
+
+one=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/time_one.csv')
+
+one=one %>% mutate(ym=zoo::as.yearmon(ym)) %>% arrange(ym)
+
+one=one %>% left_join(df,by=c('permno','ym'))
+
+one=one %>% group_by(date) %>% mutate(wgt=recom_lag/sum(recom_lag),return=wgt*return) %>%
+  summarise(return=sum(return)) %>% filter(date>='2007-01-16')
+one=one %>% mutate(cumret=cumprod(return+1)) 
+```
+
+```{r}
+mar1=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/IDX_Idxtrd_1.csv')
+mar2=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/IDX_Idxtrd_2.csv')
+mar3=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/IDX_Idxtrd_3.csv')
+mar=rbind(mar1,mar2,mar3)
+names(mar)=c('num','date','mar.ret')
+mar$date=as.Date(mar$date)
+mar$mar.ret=as.numeric(mar$mar.ret)/100
+mar=mar %>% filter(date>='2006-02-06')
+mar=mar %>% na.omit() %>% mutate(cumret=cumprod(mar.ret+1))
+plot(mar$cumret~mar$date,type='l')
+```
+
+```{r}
+plot(one$cumret~one$date,type='l',xlab='Date',ylab='Cumulative return',col='blue',
+     main='Buy the 20 most recommended stocks last month')
+lines(mar$cumret~mar$date,lty=1,col='red')
+legend("topleft",c("Portfolio","Market"),lty=c(1,1),col=c('blue','red'))
+```
+
+```{r}
+one=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/time_two.csv')
+
+one=one %>% mutate(ym=zoo::as.yearmon(ym)) %>%
+  left_join(df,by=c('permno','ym')) #%>% select(permno,ym,return,date)
+
+#one=one %>% group_by(date) %>% summarise(return=mean(return))
+one=one %>% group_by(date) %>% mutate(wgt=recom_lag/sum(recom_lag),return=wgt*return) %>%
+  summarise(return=sum(return)) %>% filter(date>='2007-01-16')
+one=one %>% mutate(cumret=cumprod(return+1))
+plot(one$cumret~one$date,type='l',xlab='Date',ylab='Cumulative return',col='blue',
+     main='Buy the 20 most recommended stocks last two months')
+lines(mar$cumret~mar$date,lty=1,col='red')
+legend("topleft",c("Portfolio","Market"),lty=c(1,1),col=c('blue','red'))
+```
+
+```{r}
+one=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/time_three.csv')
+
+one=one %>% mutate(ym=zoo::as.yearmon(ym)) %>%
+  left_join(df,by=c('permno','ym')) #%>% select(permno,ym,return,date)
+
+#one=one %>% group_by(date) %>% summarise(return=mean(return))
+one=one %>% group_by(date) %>% mutate(wgt=recom_lag/sum(recom_lag),return=wgt*return) %>%
+  summarise(return=sum(return)) %>% filter(date>='2007-01-16')
+one=one %>% mutate(cumret=cumprod(return+1))
+plot(one$cumret~one$date,type='l',xlab='Date',ylab='Cumulative return',col='blue',
+     main='Buy the 20 most recommended stocks last three months')
+lines(mar$cumret~mar$date,lty=1,col='red')
+legend("topleft",c("Portfolio","Market"),lty=c(1,1),col=c('blue','red'))
+```
+
+### 持股三个月后重新选
+```{r}
+one=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/time_one.csv')
+one=one %>% mutate(ym=zoo::as.yearmon(ym),take=1) %>% arrange(ym)
+for (i in seq(2,51)){
+  one$take[((i-1)*60+1):(i*60)]=i
+}
+one$take[3061:3100]=52
+one=one %>% group_by(take) %>% arrange(ym) %>% mutate(per1=lag(permno,20),per2=lag(permno,40)) %>% 
+  mutate(per2=ifelse(is.na(per2),per1,per2),per2=ifelse(is.na(per2),permno,per2),permno=per2) %>% ungroup() %>%
+  select(permno,ym,recom_lag)
+one=one %>% left_join(df,by=c('permno','ym'))
+
+one=one %>% group_by(date) %>% mutate(wgt=recom_lag/sum(recom_lag),return=wgt*return) %>%
+  summarise(return=sum(return)) %>% filter(date>='2007-01-16')
+one=one %>% mutate(cumret=cumprod(return+1))
+plot(one$cumret~one$date,type='l',xlab='Date',ylab='Cumulative return',col='blue',
+     main='Buy the 20 most recommended stocks last month')
+lines(mar$cumret~mar$date,lty=1,col='red')
+legend("topleft",c("Portfolio","Market"),lty=c(1,1),col=c('blue','red'))
+```
+
+```{r}
+one=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/time_two.csv')
+one=one %>% mutate(ym=zoo::as.yearmon(ym),take=1) %>% arrange(ym)
+for (i in seq(2,51)){
+  one$take[((i-1)*60+1):(i*60)]=i
+}
+one$take[3061:3100]=52
+one=one %>% group_by(take) %>% arrange(ym) %>% mutate(per1=lag(permno,20),per2=lag(permno,40)) %>% 
+  mutate(per2=ifelse(is.na(per2),per1,per2),per2=ifelse(is.na(per2),permno,per2),permno=per2) %>% ungroup() %>%
+  select(permno,ym,recom_lag)
+one=one %>% left_join(df,by=c('permno','ym'))
+
+one=one %>% group_by(date) %>% mutate(wgt=recom_lag/sum(recom_lag),return=wgt*return) %>%
+  summarise(return=sum(return)) %>% filter(date>='2007-01-16')
+one=one %>% mutate(cumret=cumprod(return+1))
+plot(one$cumret~one$date,type='l',xlab='Date',ylab='Cumulative return',col='blue',
+     main='Buy the 20 most recommended stocks last month')
+lines(mar$cumret~mar$date,lty=1,col='red')
+legend("topleft",c("Portfolio","Market"),lty=c(1,1),col=c('blue','red'))
+```
+
+```{r}
+one=read.csv('/Users/zhangdi/FIN3080/project3/p3/rating/time_three.csv')
+one=one %>% mutate(ym=zoo::as.yearmon(ym),take=1) %>% arrange(ym)
+for (i in seq(2,51)){
+  one$take[((i-1)*60+1):(i*60)]=i
+}
+one$take[3061:3100]=52
+one=one %>% group_by(take) %>% arrange(ym) %>% mutate(per1=lag(permno,20),per2=lag(permno,40)) %>% 
+  mutate(per2=ifelse(is.na(per2),per1,per2),per2=ifelse(is.na(per2),permno,per2),permno=per2) %>% ungroup() %>%
+  select(permno,ym,recom_lag)
+one=one %>% left_join(df,by=c('permno','ym'))
+
+one=one %>% group_by(date) %>% mutate(wgt=recom_lag/sum(recom_lag),return=wgt*return) %>%
+  summarise(return=sum(return)) %>% filter(date>='2007-01-16')
+one=one %>% mutate(cumret=cumprod(return+1)) 
+plot(one$cumret~one$date,type='l',xlab='Date',ylab='Cumulative return',col='blue',
+     main='Buy the 20 most recommended stocks last month')
+lines(mar$cumret~mar$date,lty=1,col='red')
+legend("topleft",c("Portfolio","Market"),lty=c(1,1),col=c('blue','red'))
+```
+

@@ -1,0 +1,140 @@
+---
+title: "p3"
+author: "Di Zhang  118020518"
+date: "4/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+pilu1=read.csv('/Users/zhangdi/FIN3080/project3/p3/disclosure\ time/财务报告披露时间_1.csv')
+pilu2=read.csv('/Users/zhangdi/FIN3080/project3/p3/disclosure\ time/财务报告披露时间_2.csv')
+```
+
+```{r}
+library(dplyr)
+pilu=rbind(pilu1,pilu2)
+pilu$ActlDt=as.Date(pilu$ActlDt)
+names(pilu)=c('permno','coname','date')
+pilu$coname=NULL
+pilu=pilu %>% filter(date>='2016-01-01' & date<='2018-12-31') %>% mutate(pilu=1)
+head(pilu)
+```
+
+```{r}
+com1=read.csv('/Users/zhangdi/FIN3080/project3/p3/disclosure\ time/TRD_Dalyr.csv')
+com2=read.csv('/Users/zhangdi/FIN3080/project3/p3/disclosure\ time/TRD_Dalyr1.csv')
+com3=read.csv('/Users/zhangdi/FIN3080/project3/p3/disclosure\ time/TRD_Dalyr2.csv')
+com=rbind(com1,com2,com3)
+head(com)
+```
+
+```{r}
+names(com)=c('permno','date','return')
+com$date=as.Date(com$date)
+head(com)
+```
+
+```{r}
+new=pilu %>% group_by(permno) %>% summarise(n=n())
+new_12=new %>% filter(n==12)
+new=as.vector(new_12$permno)
+pilu=pilu %>% filter(permno %in% new) %>% arrange(permno,date)
+for (i in seq(1,1941)){
+  pilu$pilu[((i-1)*12+1):(i*12)]=seq(1,12)
+}
+
+q1=com %>% left_join(pilu,by=c('permno','date'))
+q1=q1 %>% mutate(pilu=ifelse(is.na(pilu),0,pilu))
+
+q1=q1 %>% filter(permno %in% new) %>% mutate(rep_pilu=pilu)
+
+q1_last=q1
+q1_before=q1
+for (i in seq(1,21)){
+  q1_last=q1_last %>% group_by(permno) %>% arrange(date) %>% mutate(pilu_lag=lag(rep_pilu,i)) %>%
+    mutate(pilu=pilu+pilu_lag)
+}
+for (i in seq(1,5)){
+  q1_before=q1_before %>% group_by(permno) %>% arrange(date) %>% mutate(pilu_lag=lead(rep_pilu,i)) %>%
+    mutate(pilu=pilu+pilu_lag)
+}
+```
+
+
+```{r}
+library(zoo)
+library(tidyr)
+library(lubridate)
+```
+
+```{r}
+q1_last=q1_last %>% filter(pilu!=0)
+q1_before=q1_before %>% filter(pilu!=0)
+```
+
+```{r}
+mar=read.csv('/Users/zhangdi/FIN3080/project3/p3/disclosure\ time/IDX_Idxtrd.csv')
+names(mar)=c('num','date','mar.ret')
+mar$date=as.Date(mar$date)
+mar$mar.ret=as.integer(mar$mar.ret)/100
+q1_before=q1_before %>% inner_join(mar,by='date')
+q1_before$return=q1_before$return-q1_before$mar.ret
+q1_last=q1_last %>% inner_join(mar,by='date')
+q1_last$return=q1_last$return-q1_last$mar.ret
+```
+
+```{r}
+q1_before=q1_before %>% group_by(permno,pilu) %>% arrange(date) %>% mutate(cumret=cumprod(return+1)) %>%
+  summarise(date=last(date),cumret=last(cumret))
+write.csv(q1_before,'/Users/zhangdi/FIN3080/project3/p3/q1_before.csv')
+```
+
+```{r}
+group=read.csv('/Users/zhangdi/FIN3080/project3/p3/q1_group.csv')
+```
+
+```{r}
+group=group %>% select(permno,pilu,group)
+head(group)
+```
+
+```{r}
+q1_last=q1_last %>% filter(rep_pilu==0) %>% select(permno,date,return,pilu)
+q1_last=q1_last %>% inner_join(group,by=c('permno','pilu'))
+head(q1_last)
+```
+
+```{r}
+q1_new=q1_last %>% group_by(permno,pilu) %>% arrange(date) %>% mutate(cumret=cumprod(return+1))
+q1_ceshi=q1_new %>% group_by(pilu,group,permno) %>% mutate(times=seq(1,n()))
+```
+
+```{r}
+q1_new=q1_ceshi %>% group_by(pilu,group,times) %>% summarise(cumret=mean(cumret,na.rm=TRUE))
+q1_new=q1_new %>% filter(times<=21)
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ceshi=q1_new %>% filter(pilu==1)
+ceshi %>% ggplot(aes(times,cumret))+geom_line()+facet_wrap(~group)+theme_bw()+labs(title='pilu one')
+```
+
+```{r}
+for (i in seq(1,12)){
+  pilu_show=q1_new %>% filter(pilu==i)
+  p=pilu_show %>% ggplot(aes(times,cumret))+geom_line()+facet_wrap(~group)+theme_bw()+
+    labs(title=paste0('Disclosure of the reports: ',i),xlab='Date after Disclosure',ylab='Cumulative return')
+  print(p)
+}
+```
+
+
